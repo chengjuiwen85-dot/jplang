@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#E24B4A">
+<title>五十音学習</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --red:#E24B4A; --red-light:#FCEBEB; --red-dark:#A32D2D;
+  --blue:#378ADD; --blue-light:#E6F1FB; --blue-dark:#0C447C;
+  --teal:#1D9E75; --teal-light:#E1F5EE; --teal-dark:#085041;
+  --amber:#BA7517; --amber-light:#FAEEDA;
+  --bg:#F8F7F4; --surface:#ffffff; --text:#2C2C2A; --muted:#888780;
+  --border:rgba(44,44,42,0.12);
+}
+body { font-family:'Zen Kaku Gothic New','Noto Sans JP',sans-serif; background:var(--bg); color:var(--text); height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+
+.header { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 20px 10px; display:flex; align-items:center; gap:16px; flex-shrink:0; }
+.header-title { font-size:20px; font-weight:700; flex:1; }
+.header-sub { font-size:11px; color:var(--muted); margin-top:1px; }
+.badge { font-size:11px; font-weight:700; padding:4px 12px; border-radius:20px; background:var(--red-light); color:var(--red-dark); }
+
+.tab-bar { display:flex; background:var(--surface); border-bottom:1px solid var(--border); padding:0 16px; flex-shrink:0; }
+.tab-btn { padding:10px 18px; font-size:14px; font-weight:500; border:none; background:none; cursor:pointer; color:var(--muted); border-bottom:2.5px solid transparent; font-family:inherit; transition:all 0.15s; }
+.tab-btn.active { color:var(--red); border-bottom-color:var(--red); }
+
+.content { flex:1; overflow-y:auto; padding:16px; -webkit-overflow-scrolling:touch; }
+.hidden { display:none !important; }
+
+.section-label { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin:10px 0 8px 2px; }
+
+.kana-grid { display:grid; grid-template-columns:repeat(10,1fr); gap:5px; margin-bottom:12px; }
+.kana-cell { background:var(--surface); border:1px solid var(--border); border-radius:10px; aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; transition:all 0.12s; user-select:none; }
+.kana-cell:active { transform:scale(0.92); }
+.kana-cell.learned { background:var(--red-light); border-color:rgba(226,75,74,0.3); }
+.kana-cell.speaking { background:var(--blue-light); border-color:var(--blue); transform:scale(1.08); }
+.km { font-size:clamp(14px,2.5vw,22px); font-weight:700; line-height:1; }
+.kr { font-size:clamp(7px,1vw,10px); color:var(--muted); }
+.kana-cell.learned .kr { color:var(--red-dark); }
+
+/* Detail */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:100; padding:24px; }
+.detail-card { background:var(--surface); border-radius:24px; padding:32px 28px; max-width:360px; width:100%; text-align:center; border:1px solid var(--border); }
+.d-hira { font-size:96px; font-weight:700; color:var(--red); line-height:1; cursor:pointer; display:inline-block; transition:all 0.1s; }
+.d-hira.speaking { color:var(--blue); transform:scale(1.05); }
+.speak-btn { display:inline-flex; align-items:center; gap:6px; background:var(--blue-light); color:var(--blue-dark); border:1px solid rgba(55,138,221,0.3); border-radius:20px; padding:7px 18px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; margin:8px 0 4px; transition:all 0.15s; }
+.speak-btn:active, .speak-btn.playing { background:var(--blue); color:white; }
+.d-roma { font-size:28px; color:var(--muted); margin:0 0 14px; }
+.d-kata-lbl { font-size:11px; color:var(--muted); margin-bottom:4px; }
+.d-kata-row { display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:18px; }
+.d-kata { font-size:52px; color:var(--blue); }
+.speak-kata-btn { display:inline-flex; align-items:center; gap:5px; background:var(--blue-light); color:var(--blue-dark); border:1px solid rgba(55,138,221,0.3); border-radius:16px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s; }
+.speak-kata-btn:active { background:var(--blue); color:white; }
+.d-hint { font-size:12px; color:var(--muted); background:var(--bg); border-radius:8px; padding:8px 14px; margin-bottom:18px; }
+.detail-btns { display:flex; gap:10px; justify-content:center; }
+.btn-close { padding:11px 22px; border:1px solid var(--border); border-radius:12px; background:none; cursor:pointer; font-size:14px; font-family:inherit; color:var(--text); }
+.btn-learn { padding:11px 26px; border:none; border-radius:12px; background:var(--red); color:white; cursor:pointer; font-size:14px; font-weight:700; font-family:inherit; }
+
+/* Sound wave */
+@keyframes wave { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(2.2)} }
+.sw { display:inline-flex; align-items:center; gap:2px; height:14px; }
+.sw span { display:block; width:3px; height:8px; background:currentColor; border-radius:2px; animation:wave 0.55s ease-in-out infinite; }
+.sw span:nth-child(2){animation-delay:.1s} .sw span:nth-child(3){animation-delay:.2s}
+.sw.off { display:none; }
+
+/* Quiz */
+.quiz-score { display:flex; gap:10px; margin-bottom:14px; }
+.score-box { flex:1; background:var(--surface); border-radius:12px; padding:12px; text-align:center; border:1px solid var(--border); }
+.score-num { font-size:26px; font-weight:700; }
+.score-lbl { font-size:11px; color:var(--muted); margin-top:2px; }
+.quiz-mode-bar { display:flex; gap:8px; margin-bottom:14px; }
+.mode-btn { flex:1; padding:9px; border:1px solid var(--border); border-radius:10px; background:var(--surface); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; color:var(--muted); transition:all 0.15s; }
+.mode-btn.active { background:var(--red-light); border-color:var(--red); color:var(--red-dark); }
+.quiz-card { background:var(--surface); border-radius:16px; padding:28px 20px; text-align:center; border:1px solid var(--border); margin-bottom:14px; }
+.quiz-prompt { font-size:clamp(60px,11vw,92px); font-weight:700; line-height:1; margin-bottom:6px; cursor:pointer; display:inline-block; transition:transform 0.1s; }
+.quiz-prompt:active { transform:scale(0.93); }
+.quiz-prompt.speaking { opacity:0.65; }
+.quiz-hint { font-size:12px; color:var(--muted); margin-bottom:6px; }
+.quiz-question { font-size:13px; color:var(--muted); margin-bottom:20px; }
+.quiz-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.quiz-opt { padding:14px; border:1.5px solid var(--border); border-radius:12px; background:var(--surface); font-size:17px; font-weight:500; cursor:pointer; font-family:inherit; color:var(--text); transition:all 0.12s; user-select:none; }
+.quiz-opt:active:not([disabled]) { transform:scale(0.96); }
+.quiz-opt.correct { background:var(--teal-light); border-color:var(--teal); color:var(--teal-dark); }
+.quiz-opt.wrong { background:var(--red-light); border-color:var(--red); color:var(--red-dark); }
+.quiz-next { width:100%; padding:15px; background:var(--red); color:white; border:none; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; display:none; }
+
+/* Progress */
+.progress-section { background:var(--surface); border-radius:14px; padding:18px 20px; border:1px solid var(--border); margin-bottom:12px; }
+.progress-title { font-size:14px; font-weight:700; margin-bottom:14px; }
+.progress-row { display:flex; align-items:center; gap:10px; margin-bottom:9px; }
+.progress-name { font-size:13px; color:var(--muted); width:52px; }
+.progress-bar-bg { flex:1; height:8px; background:var(--bg); border-radius:4px; overflow:hidden; }
+.progress-bar-fill { height:100%; border-radius:4px; transition:width 0.6s; }
+.progress-pct { font-size:12px; font-weight:700; color:var(--muted); width:34px; text-align:right; }
+.streak-display { display:flex; align-items:center; gap:14px; background:var(--amber-light); border-radius:14px; padding:16px 20px; margin-bottom:12px; border:1px solid rgba(186,117,23,0.25); }
+.streak-icon { font-size:34px; }
+.streak-num { font-size:30px; font-weight:700; color:var(--amber); }
+.streak-lbl { font-size:13px; color:var(--amber); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div><div class="header-title">五十音 学習</div><div class="header-sub">Hiragana &amp; Katakana</div></div>
+  <span class="badge" id="learned-badge">已學 0 / 46</span>
+</div>
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('table')">表格</button>
+  <button class="tab-btn" onclick="switchTab('quiz')">測驗</button>
+  <button class="tab-btn" onclick="switchTab('progress')">進度</button>
+</div>
+
+<!-- TABLE -->
+<div class="content" id="content-table">
+  <div class="section-label">平假名 Hiragana — 點字聽發音 🔊</div>
+  <div class="kana-grid" id="hira-grid"></div>
+  <div class="section-label">片假名 Katakana — 點字聽發音 🔊</div>
+  <div class="kana-grid" id="kata-grid"></div>
+</div>
+
+<!-- QUIZ -->
+<div class="content hidden" id="content-quiz">
+  <div class="quiz-score">
+    <div class="score-box"><div class="score-num" id="q-correct" style="color:var(--teal)">0</div><div class="score-lbl">正確</div></div>
+    <div class="score-box"><div class="score-num" id="q-wrong" style="color:var(--red)">0</div><div class="score-lbl">錯誤</div></div>
+    <div class="score-box"><div class="score-num" id="q-streak">0</div><div class="score-lbl">連續</div></div>
+  </div>
+  <div class="quiz-mode-bar">
+    <button class="mode-btn active" id="mode-roma" onclick="setMode('roma')">👁 看字選讀音</button>
+    <button class="mode-btn" id="mode-listen" onclick="setMode('listen')">👂 聽音選假名</button>
+  </div>
+  <div class="quiz-card">
+    <div class="quiz-prompt" id="quiz-char" onclick="speakQuiz()">あ</div>
+    <div class="quiz-hint" id="quiz-hint">👆 點字可以聽發音</div>
+    <div class="quiz-question" id="quiz-question">這個假名的羅馬字是？</div>
+    <div class="quiz-options" id="quiz-opts"></div>
+  </div>
+  <button class="quiz-next" id="quiz-next-btn" onclick="nextQuestion()">下一題 →</button>
+</div>
+
+<!-- PROGRESS -->
+<div class="content hidden" id="content-progress">
+  <div class="streak-display">
+    <div class="streak-icon">🔥</div>
+    <div><div class="streak-num" id="prog-streak">0</div><div class="streak-lbl">連續答對</div></div>
+  </div>
+  <div class="progress-section">
+    <div class="progress-title">各行學習進度</div>
+    <div id="row-progress"></div>
+  </div>
+  <div class="progress-section">
+    <div class="progress-title">整體統計</div>
+    <div class="quiz-score" style="margin:0">
+      <div class="score-box"><div class="score-num" id="stat-learned" style="color:var(--red)">0</div><div class="score-lbl">已學字</div></div>
+      <div class="score-box"><div class="score-num" id="stat-correct" style="color:var(--teal)">0</div><div class="score-lbl">答對</div></div>
+      <div class="score-box"><div class="score-num" id="stat-wrong" style="color:var(--muted)">0</div><div class="score-lbl">答錯</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div class="overlay hidden" id="detail-overlay" onclick="handleOverlayClick(event)">
+  <div class="detail-card">
+    <div class="d-hira" id="d-hira" onclick="speakDetail('hira')">あ</div>
+    <button class="speak-btn" onclick="speakDetail('hira')">
+      🔊 聽平假名 <span class="sw off" id="wave-hira"><span></span><span></span><span></span></span>
+    </button>
+    <div class="d-roma" id="d-roma">a</div>
+    <div class="d-kata-lbl">片假名對照</div>
+    <div class="d-kata-row">
+      <div class="d-kata" id="d-kata">ア</div>
+      <button class="speak-kata-btn" onclick="speakDetail('kata')">
+        🔊 聽片假名 <span class="sw off" id="wave-kata"><span></span><span></span><span></span></span>
+      </button>
+    </div>
+    <div class="d-hint" id="d-hint">點擊「標記已學」加入學習清單</div>
+    <div class="detail-btns">
+      <button class="btn-close" onclick="closeDetail()">關閉</button>
+      <button class="btn-learn" id="d-learn-btn" onclick="markLearned()">標記已學</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const kanaData=[
+  {h:'あ',k:'ア',r:'a',row:'あ行'},{h:'い',k:'イ',r:'i',row:'あ行'},{h:'う',k:'ウ',r:'u',row:'あ行'},{h:'え',k:'エ',r:'e',row:'あ行'},{h:'お',k:'オ',r:'o',row:'あ行'},
+  {h:'か',k:'カ',r:'ka',row:'か行'},{h:'き',k:'キ',r:'ki',row:'か行'},{h:'く',k:'ク',r:'ku',row:'か行'},{h:'け',k:'ケ',r:'ke',row:'か行'},{h:'こ',k:'コ',r:'ko',row:'か行'},
+  {h:'さ',k:'サ',r:'sa',row:'さ行'},{h:'し',k:'シ',r:'shi',row:'さ行'},{h:'す',k:'ス',r:'su',row:'さ行'},{h:'せ',k:'セ',r:'se',row:'さ行'},{h:'そ',k:'ソ',r:'so',row:'さ行'},
+  {h:'た',k:'タ',r:'ta',row:'た行'},{h:'ち',k:'チ',r:'chi',row:'た行'},{h:'つ',k:'ツ',r:'tsu',row:'た行'},{h:'て',k:'テ',r:'te',row:'た行'},{h:'と',k:'ト',r:'to',row:'た行'},
+  {h:'な',k:'ナ',r:'na',row:'な行'},{h:'に',k:'ニ',r:'ni',row:'な行'},{h:'ぬ',k:'ヌ',r:'nu',row:'な行'},{h:'ね',k:'ネ',r:'ne',row:'な行'},{h:'の',k:'ノ',r:'no',row:'な行'},
+  {h:'は',k:'ハ',r:'ha',row:'は行'},{h:'ひ',k:'ヒ',r:'hi',row:'は行'},{h:'ふ',k:'フ',r:'fu',row:'は行'},{h:'へ',k:'ヘ',r:'he',row:'は行'},{h:'ほ',k:'ホ',r:'ho',row:'は行'},
+  {h:'ま',k:'マ',r:'ma',row:'ま行'},{h:'み',k:'ミ',r:'mi',row:'ま行'},{h:'む',k:'ム',r:'mu',row:'ま行'},{h:'め',k:'メ',r:'me',row:'ま行'},{h:'も',k:'モ',r:'mo',row:'ま行'},
+  {h:'や',k:'ヤ',r:'ya',row:'や行'},{h:'ゆ',k:'ユ',r:'yu',row:'や行'},{h:'よ',k:'ヨ',r:'yo',row:'や行'},
+  {h:'ら',k:'ラ',r:'ra',row:'ら行'},{h:'り',k:'リ',r:'ri',row:'ら行'},{h:'る',k:'ル',r:'ru',row:'ら行'},{h:'れ',k:'レ',r:'re',row:'ら行'},{h:'ろ',k:'ロ',r:'ro',row:'ら行'},
+  {h:'わ',k:'ワ',r:'wa',row:'わ行'},{h:'を',k:'ヲ',r:'wo',row:'わ行'},{h:'ん',k:'ン',r:'n',row:'ん'},
+];
+
+let learned=new Set(JSON.parse(localStorage.getItem('learned')||'[]'));
+let totalCorrect=parseInt(localStorage.getItem('tc')||0);
+let totalWrong=parseInt(localStorage.getItem('tw')||0);
+let quizCorrect=0,quizWrong=0,quizStreak=0;
+let currentDetail=null,currentQ=null,answered=false,quizMode='roma';
+
+function save(){
+  localStorage.setItem('learned',JSON.stringify([...learned]));
+  localStorage.setItem('tc',totalCorrect);
+  localStorage.setItem('tw',totalWrong);
+}
+
+// ── Speech ──
+let voices=[];
+function loadVoices(){ voices=speechSynthesis.getVoices(); }
+if(speechSynthesis.onvoiceschanged!==undefined) speechSynthesis.onvoiceschanged=loadVoices;
+loadVoices();
+
+function getJpVoice(){
+  return voices.find(v=>v.lang==='ja-JP')||voices.find(v=>v.lang.startsWith('ja'))||null;
+}
+
+function speak(text,onEnd){
+  if(!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const utt=new SpeechSynthesisUtterance(text);
+  const v=getJpVoice(); if(v) utt.voice=v;
+  utt.lang='ja-JP'; utt.rate=0.82; utt.pitch=1.05;
+  if(onEnd) utt.onend=onEnd;
+  speechSynthesis.speak(utt);
+}
+
+function setWave(id,on){ document.getElementById(id).classList.toggle('off',!on); }
+
+// Grid cell speak
+function speakFromGrid(kana,cellEl){
+  cellEl.classList.add('speaking');
+  speak(kana,()=>cellEl.classList.remove('speaking'));
+  setTimeout(()=>cellEl.classList.remove('speaking'),1800);
+}
+
+// Detail speak
+function speakDetail(type){
+  if(currentDetail===null)return;
+  const k=kanaData[currentDetail];
+  const text=type==='hira'?k.h:k.k;
+  const waveId='wave-'+type;
+  const hiraEl=document.getElementById('d-hira');
+  setWave(waveId,true);
+  if(type==='hira') hiraEl.classList.add('speaking');
+  speak(text,()=>{
+    setWave(waveId,false);
+    hiraEl.classList.remove('speaking');
+  });
+  setTimeout(()=>{ setWave(waveId,false); hiraEl.classList.remove('speaking'); },2500);
+}
+
+// Quiz speak
+function speakQuiz(){
+  if(!currentQ)return;
+  const el=document.getElementById('quiz-char');
+  el.classList.add('speaking');
+  speak(currentQ.h,()=>el.classList.remove('speaking'));
+  setTimeout(()=>el.classList.remove('speaking'),1800);
+}
+
+// ── Grid ──
+function buildGrids(){
+  ['hira-grid','kata-grid'].forEach((id,gi)=>{
+    const grid=document.getElementById(id);
+    grid.innerHTML='';
+    kanaData.forEach((k,i)=>{
+      const cell=document.createElement('div');
+      cell.className='kana-cell'+(learned.has(i)?' learned':'');
+      cell.innerHTML=`<div class="km">${gi===0?k.h:k.k}</div><div class="kr">${k.r}</div>`;
+      cell.onclick=()=>{ speakFromGrid(gi===0?k.h:k.k,cell); openDetail(i); };
+      grid.appendChild(cell);
+    });
+  });
+  document.getElementById('learned-badge').textContent=`已學 ${learned.size} / ${kanaData.length}`;
+}
+
+// ── Detail ──
+function openDetail(idx){
+  currentDetail=idx;
+  const k=kanaData[idx];
+  const isL=learned.has(idx);
+  document.getElementById('d-hira').textContent=k.h;
+  document.getElementById('d-roma').textContent=k.r;
+  document.getElementById('d-kata').textContent=k.k;
+  document.getElementById('d-hint').textContent=isL?'✓ 已標記為已學':'點擊「標記已學」加入學習清單';
+  const btn=document.getElementById('d-learn-btn');
+  btn.textContent=isL?'取消標記':'標記已學';
+  btn.style.background=isL?'#888780':'var(--red)';
+  ['wave-hira','wave-kata'].forEach(id=>setWave(id,false));
+  document.getElementById('detail-overlay').classList.remove('hidden');
+  setTimeout(()=>speakDetail('hira'),350);
+}
+
+function handleOverlayClick(e){
+  if(e.target===document.getElementById('detail-overlay'))closeDetail();
+}
+function closeDetail(){ speechSynthesis.cancel(); document.getElementById('detail-overlay').classList.add('hidden'); }
+
+function markLearned(){
+  if(learned.has(currentDetail)) learned.delete(currentDetail);
+  else learned.add(currentDetail);
+  save(); buildGrids(); openDetail(currentDetail); updateProgress();
+}
+
+// ── Quiz ──
+function setMode(mode){
+  quizMode=mode;
+  document.getElementById('mode-roma').classList.toggle('active',mode==='roma');
+  document.getElementById('mode-listen').classList.toggle('active',mode==='listen');
+  nextQuestion();
+}
+
+function nextQuestion(){
+  answered=false;
+  document.getElementById('quiz-next-btn').style.display='none';
+  const idx=Math.floor(Math.random()*kanaData.length);
+  currentQ=kanaData[idx];
+  const charEl=document.getElementById('quiz-char');
+  const hintEl=document.getElementById('quiz-hint');
+  const qEl=document.getElementById('quiz-question');
+
+  if(quizMode==='listen'){
+    charEl.textContent='🔊';
+    charEl.style.color='var(--blue)';
+    charEl.style.fontSize='72px';
+    hintEl.textContent='👆 點喇叭重新播放';
+    qEl.textContent='聽發音，選出正確的假名';
+    setTimeout(()=>speak(currentQ.h),300);
+    const opts=[...kanaData.filter(k=>k.r!==currentQ.r).sort(()=>Math.random()-0.5).slice(0,3),currentQ].sort(()=>Math.random()-0.5);
+    renderOpts(opts,o=>o.h,chosen=>selectAnswer(chosen,currentQ.r));
+  } else {
+    const showH=Math.random()>0.5;
+    charEl.textContent=showH?currentQ.h:currentQ.k;
+    charEl.style.color=showH?'var(--red)':'var(--blue)';
+    charEl.style.fontSize='';
+    hintEl.textContent='👆 點字可以聽發音';
+    qEl.textContent='這個假名的羅馬字是？';
+    const opts=[...kanaData.filter(k=>k.r!==currentQ.r).sort(()=>Math.random()-0.5).slice(0,3),currentQ].sort(()=>Math.random()-0.5);
+    renderOpts(opts,o=>o.r,chosen=>selectAnswer(chosen,currentQ.r));
+  }
+}
+
+function renderOpts(opts,labelFn,onSel){
+  const el=document.getElementById('quiz-opts');
+  el.innerHTML='';
+  opts.forEach(opt=>{
+    const btn=document.createElement('button');
+    btn.className='quiz-opt';
+    btn.textContent=labelFn(opt);
+    btn.onclick=()=>onSel(opt.r);
+    el.appendChild(btn);
+  });
+}
+
+function selectAnswer(chosen,correct){
+  if(answered)return;
+  answered=true;
+  const btns=document.querySelectorAll('.quiz-opt');
+  btns.forEach(b=>{
+    b.disabled=true;
+    const isCorrectBtn=quizMode==='listen'?b.textContent===currentQ.h:b.textContent===correct;
+    if(isCorrectBtn) b.classList.add('correct');
+  });
+  const isRight=chosen===correct;
+  if(!isRight){
+    btns.forEach(b=>{
+      const matchWrong=quizMode==='listen'?b.textContent===kanaData.find(k=>k.r===chosen)?.h:b.textContent===chosen;
+      if(matchWrong) b.classList.add('wrong');
+    });
+    setTimeout(()=>speak(currentQ.h),400);
+  }
+  if(isRight){quizCorrect++;totalCorrect++;quizStreak++;}
+  else{quizWrong++;totalWrong++;quizStreak=0;}
+  document.getElementById('q-correct').textContent=quizCorrect;
+  document.getElementById('q-wrong').textContent=quizWrong;
+  document.getElementById('q-streak').textContent=quizStreak;
+  document.getElementById('quiz-next-btn').style.display='block';
+  save();
+}
+
+// ── Tabs ──
+function switchTab(tab){
+  ['table','quiz','progress'].forEach(t=>document.getElementById('content-'+t).classList.toggle('hidden',t!==tab));
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['table','quiz','progress'][i]===tab));
+  if(tab==='quiz')nextQuestion();
+  if(tab==='progress')updateProgress();
+}
+
+// ── Progress ──
+function updateProgress(){
+  document.getElementById('stat-learned').textContent=learned.size;
+  document.getElementById('stat-correct').textContent=totalCorrect;
+  document.getElementById('stat-wrong').textContent=totalWrong;
+  document.getElementById('prog-streak').textContent=quizStreak;
+  const rows={};
+  kanaData.forEach((k,i)=>{
+    if(!rows[k.row])rows[k.row]={total:0,learned:0};
+    rows[k.row].total++;
+    if(learned.has(i))rows[k.row].learned++;
+  });
+  const colors=['#E24B4A','#378ADD','#1D9E75','#BA7517','#7F77DD','#E24B4A','#378ADD','#1D9E75','#BA7517','#7F77DD'];
+  document.getElementById('row-progress').innerHTML=Object.entries(rows).map(([name,data],i)=>{
+    const pct=Math.round(data.learned/data.total*100);
+    return `<div class="progress-row"><div class="progress-name">${name}</div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;background:${colors[i%colors.length]}"></div></div><div class="progress-pct">${pct}%</div></div>`;
+  }).join('');
+}
+
+buildGrids();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body>
+</html>
